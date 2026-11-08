@@ -1,0 +1,24 @@
+name: SaifAI Auto Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'User Prompt'
+        required: true
+        default: 'Make a simple app'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Environment
+        run: |
+          echo "Starting the build process..."
+          echo "User asked for: ${{ github.event.inputs.prompt }}"
+          mkdir -p output
+          echo "Fake APK for testing" > output/test_app.apk
+          echo "Build complete!"
