@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SaifAI Builder</string>
+    <string name="subtitle">Prompt likho → GitHub Actions build karega → APK ka download link yahin milega.</string>
+
+    <string name="prompt_hint">Kaunsa app banana hai?</string>
+    <string name="prompt_default">Saif_AI_Test_App</string>
+
+    <string name="build_app">Build App</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="download_apk">Download APK</string>
+    <string name="open_run_logs">GitHub run logs dekho</string>
+
+    <string name="status_idle">Ready to build.</string>
+    <string name="status_ready">✅ %1$s ready hai — Download APK dabao.</string>
+    <string name="status_failed">❌ %1$s</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_token">GitHub token (PAT)</string>
+    <string name="settings_firebase">Firebase DB URL</string>
+    <string name="settings_ad_gate">Ad page URL (optional)</string>
+    <string name="settings_help">Token ke permissions: Fine-grained PAT → Actions: Read and write + Contents: Read. Sirf is device me store hota hai.</string>
+    <string name="token_required">Bina GitHub token ke build trigger nahi hoga. Settings me PAT daalo.</string>
+    <string name="no_browser">Koi browser install nahi mila.</string>
+
+    <string name="action_settings">Settings</string>
+</resources>

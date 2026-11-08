@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#5B4BFF</color>
+    <color name="brand_container">#E4E0FF</color>
+    <color name="brand_container_on">#1B1240</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="success">#16A34A</color>
+    <color name="muted">#6B6B7B</color>
+    <color name="log_bg">#120C2B</color>
+    <color name="log_text">#C9C2FF</color>
+</resources>

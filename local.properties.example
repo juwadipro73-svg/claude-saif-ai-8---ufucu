@@ -1,0 +1,16 @@
+# local.properties — ye file git me commit NA karo.
+# Android SDK path (Android Studio khud bhar deta hai)
+# sdk.dir=/Users/you/Library/Android/sdk
+
+# ---- SaifAI Builder config (gradle.properties ko override karta hai) ----
+GITHUB_OWNER=shahudgg
+GITHUB_REPO=SaifAI-Builder
+GITHUB_WORKFLOW=build.yml
+GITHUB_BRANCH=main
+
+FIREBASE_DB_URL=https://YOUR-PROJECT-default-rtdb.firebaseio.com
+AD_GATE_URL=https://YOUR-PROJECT.web.app/download.html
+
+# Optional: apna APK host (multipart POST, field name = file)
+SAIF_UPLOAD_URL=
+SAIF_API_KEY=

@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.iml
+*.hprof
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.DS_Store
+
+# Keystores / secrets
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+service-account*.json
+
+# Generated output
+output/
+*.apk
+*.aab
+
+# Node (web/)
+web/node_modules/
