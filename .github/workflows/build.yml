@@ -3,17 +3,25 @@ name: SaifAI Auto Builder Master
 # ---------------------------------------------------------------------------
 # SaifAI Builder <-> App Gateway contract v1 (see docs/GATEWAY_CONTRACT.md)
 #
-# Existing repo secret/variable NAMES kept as-is to avoid re-work:
-#   secrets.GCP_CREDENTIALS    Google service-account JSON (needs both scopes:
-#                              drive.file + firebase.database; see docs)
+# CONFIRMED existing secret names (owner confirmed 2026-11-08; values never logged):
+#   secrets.GCP_CREDENTIALS    Google service-account JSON (needs scopes:
+#                              drive.file + firebase.database; see docs §6)
 #   secrets.GDRIVE_FOLDER_ID   Private Drive folder that receives artifacts
-#   secrets.FIREBASE_DB_URL    RTDB origin only, e.g. https://<db>.firebaseio.com
-#                              (NOT .../apps.json - the root SDK URL)
-# New names this contract expects (owner must create, names only):
-#   vars.SAIF_DOWNLOAD_PORTAL_URL        e.g. https://saifai-downloads.ai.studio
-#   vars.SAIF_CLOUD_API_BASE_URL         gateway API base (default callback URL = <base>/api/build-complete)
-#   secrets.SAIF_GATEWAY_CALLBACK_TOKEN  random shared key, used ONLY as the
-#                                        HMAC key for signed completion callbacks
+#   secrets.FIREBASE_DB_URL    RTDB origin, e.g. https://<db>.firebaseio.com
+#                              (NOT .../apps.json)
+#
+# REUSE policy (owner asked to continue with existing names only):
+#   optional values below resolve by fallback chain secret-first, then variable.
+#   Referencing a name that does not exist yields "" — that is handled, not fatal.
+#   Candidates tried, in order:
+#     portal URL : SAIF_DOWNLOAD_PORTAL_URL (secret, then variable)
+#     API base   : SAIF_CLOUD_API_BASE_URL  (secret, then variable)
+#     RTDB alt   : SAIF_FIREBASE_DATABASE_URL (secret, then variable) — used only
+#                  if FIREBASE_DB_URL were ever empty
+#     callback HMAC key : SAIF_GATEWAY_CALLBACK_TOKEN, SAIF_CALLBACK_TOKEN,
+#                         SAIF_GATEWAY_TOKEN (secrets). If none exists the run
+#                         still completes but the callback is sent UNSIGNED and
+#                         flagged in the summary (gateway should reject it).
 # ---------------------------------------------------------------------------
 
 on:
@@ -28,11 +36,11 @@ on:
         required: false
         default: ''
       callback_url:
-        description: 'Signed completion callback URL supplied by the gateway. Empty = use vars.SAIF_CLOUD_API_BASE_URL/api/build-complete'
+        description: 'Completion callback URL supplied by the gateway. Empty = derive from API base as <base>/api/build-complete'
         required: false
         default: ''
       artifact_types:
-        description: 'Space separated subset of: apk zip video'
+        description: 'Which artifacts to build'
         type: choice
         default: 'apk zip video'
         options:
@@ -58,42 +66,61 @@ jobs:
       JOB_ID: ${{ github.event.inputs.job_id }}
       CALLBACK_URL_INPUT: ${{ github.event.inputs.callback_url }}
       ARTIFACT_TYPES: ${{ github.event.inputs.artifact_types }}
+      # confirmed existing names
       GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
       GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
       FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
-      SAIF_GATEWAY_CALLBACK_TOKEN: ${{ secrets.SAIF_GATEWAY_CALLBACK_TOKEN }}
-      PORTAL_BASE: ${{ vars.SAIF_DOWNLOAD_PORTAL_URL }}
-      API_BASE: ${{ vars.SAIF_CLOUD_API_BASE_URL }}
+      # reuse candidates (secret-first, then variable). Nonexistent names = "".
+      SEC_SAIF_DOWNLOAD_PORTAL_URL: ${{ secrets.SAIF_DOWNLOAD_PORTAL_URL }}
+      VAR_SAIF_DOWNLOAD_PORTAL_URL: ${{ vars.SAIF_DOWNLOAD_PORTAL_URL }}
+      SEC_SAIF_CLOUD_API_BASE_URL: ${{ secrets.SAIF_CLOUD_API_BASE_URL }}
+      VAR_SAIF_CLOUD_API_BASE_URL: ${{ vars.SAIF_CLOUD_API_BASE_URL }}
+      SEC_SAIF_FIREBASE_DATABASE_URL: ${{ secrets.SAIF_FIREBASE_DATABASE_URL }}
+      VAR_SAIF_FIREBASE_DATABASE_URL: ${{ vars.SAIF_FIREBASE_DATABASE_URL }}
+      CBTOK_1: ${{ secrets.SAIF_GATEWAY_CALLBACK_TOKEN }}
+      CBTOK_2: ${{ secrets.SAIF_CALLBACK_TOKEN }}
+      CBTOK_3: ${{ secrets.SAIF_GATEWAY_TOKEN }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Validate inputs and secrets (names checked, values never logged)
+      - name: Validate inputs and resolve secret/variable names (values never logged)
         id: gate
         run: |
           set -euo pipefail
+          pick(){ for key in "$@"; do v="${!key:-}"; if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi; done; return 1; }
+
           [[ "$PROMPT" =~ ^[a-zA-Z0-9][a-zA-Z0-9\ _.-]{0,63}$ ]] || { echo "::error::prompt contains unsupported characters"; exit 1; }
           [ -z "$JOB_ID" ] || [[ "$JOB_ID" =~ ^[a-zA-Z0-9-]{6,64}$ ]] || { echo "::error::job_id must be 6-64 chars [a-zA-Z0-9-]"; exit 1; }
           [ -z "$CALLBACK_URL_INPUT" ] || [[ "$CALLBACK_URL_INPUT" =~ ^https:// ]] || { echo "::error::callback_url must be https"; exit 1; }
-          ok=true
-          for kv in GCP_CREDENTIALS GDRIVE_FOLDER_ID FIREBASE_DB_URL; do
-            v="${!kv}"
-            if [ -z "$v" ]; then echo "::error title=Missing secret::Secret $kv is not set on this repo (Settings > Secrets and variables > Actions)"; ok=false; fi
-          done
-          [ "$ok" = true ] || exit 1
-          SAFE_NAME=$(printf '%s' "$PROMPT" | tr ' ' '_' | tr -cd 'a-zA-Z0-9._-')
-          RUN_TAG="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          echo "safe_name=$SAFE_NAME" >> "$GITHUB_OUTPUT"
-          echo "run_tag=$RUN_TAG" >> "$GITHUB_OUTPUT"
-          CB="$CALLBACK_URL_INPUT"
-          if [ -z "$CB" ] && [ -n "$API_BASE" ]; then CB="${API_BASE%/}/api/build-complete"; fi
-          echo "callback_url=$CB" >> "$GITHUB_OUTPUT"
-          DB_BASE=$(printf '%s' "$FIREBASE_DB_URL" | sed -E 's#(https://[^/]+).*#\1#')
-          echo "db_base=$DB_BASE" >> "$GITHUB_OUTPUT"
-          echo "All required secret NAMES resolve. Values are never printed."
 
-      - name: Build Artifacts (apks, project zip, demo video)
-        id: build
+          ok=true
+          for kv in GCP_CREDENTIALS GDRIVE_FOLDER_ID; do
+            if [ -z "${!kv}" ]; then echo "::error title=Missing secret::Secret $kv is not set on this repo"; ok=false; fi
+          done
+          DB_RAW=$(pick FIREBASE_DB_URL SEC_SAIF_FIREBASE_DATABASE_URL VAR_SAIF_FIREBASE_DATABASE_URL || true)
+          [ -n "$DB_RAW" ] || { echo "::error title=Missing secret::Set FIREBASE_DB_URL (or SAIF_FIREBASE_DATABASE_URL) — RTDB origin"; ok=false; }
+          [ "$ok" = true ] || exit 1
+          echo "Required secret names resolve OK."
+
+          PORTAL=$(pick SEC_SAIF_DOWNLOAD_PORTAL_URL VAR_SAIF_DOWNLOAD_PORTAL_URL || true)
+          API=$(pick SEC_SAIF_CLOUD_API_BASE_URL VAR_SAIF_CLOUD_API_BASE_URL || true)
+          CBTOKEN=$(pick CBTOK_1 CBTOK_2 CBTOK_3 || true)
+          [ -n "$PORTAL" ] || echo "::warning::No portal URL name set (SAIF_DOWNLOAD_PORTAL_URL); portalUrl will be empty"
+          [ -n "$API" ]    || echo "::warning::No API base name set (SAIF_CLOUD_API_BASE_URL); callback_url input must carry the URL per-dispatch"
+          [ -n "$CBTOKEN" ] || echo "::warning::No callback HMAC key found under SAIF_GATEWAY_CALLBACK_TOKEN / SAIF_CALLBACK_TOKEN / SAIF_GATEWAY_TOKEN; callback will be UNSIGNED"
+          [ -n "$CBTOKEN" ] && echo "::add-mask::$CBTOKEN"
+
+          echo "safe_name=$(printf '%s' "$PROMPT" | tr ' ' '_' | tr -cd 'a-zA-Z0-9._-')" >> "$GITHUB_OUTPUT"
+          echo "run_tag=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+          CB="$CALLBACK_URL_INPUT"
+          if [ -z "$CB" ] && [ -n "$API" ]; then CB="${API%/}/api/build-complete"; fi
+          echo "callback_url=$CB" >> "$GITHUB_OUTPUT"
+          echo "db_base=$(printf '%s' "$DB_RAW" | sed -E 's#(https://[^/]+).*#\1#')" >> "$GITHUB_OUTPUT"
+          echo "portal_base=$PORTAL" >> "$GITHUB_OUTPUT"
+          echo "callback_token=$CBTOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Build Artifacts (apk, project zip, demo video)
         run: |
           set -euo pipefail
           mkdir -p output
@@ -157,24 +184,23 @@ jobs:
               *.zip)  IDS[zip]="$fid"  ;;
               *.mp4)  IDS[video]="$fid";;
             esac
-            echo "uploaded_drive_id[$base]=$fid" >> "$GITHUB_STEP_SUMMARY"
+            echo "- uploaded to private Drive: \`$base\` (file id recorded, file stays PRIVATE)" >> "$GITHUB_STEP_SUMMARY"
           done
           [ -n "${IDS[apk]:-}" ]   && echo "apk_id=${IDS[apk]}"     >> "$GITHUB_OUTPUT"
           [ -n "${IDS[zip]:-}" ]   && echo "zip_id=${IDS[zip]}"     >> "$GITHUB_OUTPUT"
           [ -n "${IDS[video]:-}" ] && echo "video_id=${IDS[video]}" >> "$GITHUB_OUTPUT"
-          # Files stay PRIVATE: no permissions are created, no public 'uc?id=' links are produced.
+          # Files stay PRIVATE: no permissions.create, no public 'uc?id=' links are produced.
 
-      - name: Mint one-time download token (never logged unmasked)
+      - name: Mint one-time download token (masked)
         id: token
         run: |
           set -euo pipefail
           TOKEN="$(openssl rand -hex 24)"
           echo "::add-mask::$TOKEN"
           echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
-          if [ -n "$PORTAL_BASE" ]; then
-            echo "portal_url=${PORTAL_BASE%/}/d/$TOKEN" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::vars.SAIF_DOWNLOAD_PORTAL_URL not set; portal_url output will be empty"
+          PB="${{ steps.gate.outputs.portal_base }}"
+          if [ -n "$PB" ]; then
+            echo "portal_url=${PB%/}/d/$TOKEN" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Sync one-time token via authenticated RTDB REST (private paths, not /apps.json)
@@ -197,20 +223,20 @@ jobs:
             '{token:$token, jobId:$job, appName:$name, files:{apk:$apk, zip:$zip, video:$video}, used:false, createdAt:{".sv":"timestamp"}, runUrl:$run}')
           curl -sfS -X PUT -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" \
             -d "$body" "$DB/downloadTokens/$TOKEN.json" \
-            || { echo "::error::RTDB write failed. Grant the service account roles/firebasedatabase.admin (or an RTDB-scoped auth path) and check rules."; exit 1; }
+            || { echo "::error::RTDB write failed. Grant the service account roles/firebasedatabase.admin (or DB-scoped permission) and check RTDB rules."; exit 1; }
           curl -sfS -X PATCH -H "Authorization: Bearer $ACCESS_TOKEN" -H "Content-Type: application/json" \
-            -d "$(jq -cn --arg t "$TOKEN" --arg p "${{ steps.token.outputs.portal_url }}" '{status:"ready", token:$t, portalUrl:$p, updatedAt:{".sv":"timestamp"}}' )" \
+            -d "$(jq -cn --arg t "$TOKEN" --arg p "${{ steps.token.outputs.portal_url }}" '{status:"ready", token:$t, portalUrl:$p, updatedAt:{".sv":"timestamp"}}')" \
             "$DB/jobs/$JID.json" || echo "::warning::jobs/ mirror write failed (non-fatal)"
-          echo "One-time token + file ids synced under /downloadTokens/<token> (private paths only)."
+          echo "One-time token + private Drive ids synced under /downloadTokens/<token>."
 
-      - name: Signed gateway completion callback
+      - name: Gateway completion callback (HMAC-signed when a key name exists)
         if: always() && steps.gate.outputs.callback_url != ''
         env:
           STATUS: ${{ job.status }}
+          CALLBACK_TOKEN: ${{ steps.gate.outputs.callback_token }}
         run: |
           set -euo pipefail
           CB="${{ steps.gate.outputs.callback_url }}"
-          [ -n "$SAIF_GATEWAY_CALLBACK_TOKEN" ] || { echo "::error::secrets.SAIF_GATEWAY_CALLBACK_TOKEN not set; signed callback aborted"; exit 1; }
           st=$([ "$STATUS" = "success" ] && echo completed || echo failed)
           body=$(jq -cn \
             --arg job "${JOB_ID:-}" \
@@ -221,20 +247,30 @@ jobs:
             --arg zip "${{ steps.drive.outputs.zip_id }}" \
             --arg video "${{ steps.drive.outputs.video_id }}" \
             '{schema:"saif-builder.callback/v1", jobId:$job, status:$st, portalUrl:$portal, files:{apk:$apk,zip:$zip,video:$video}, run:{repo:$repo, id:$run}}')
-          sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$SAIF_GATEWAY_CALLBACK_TOKEN" -r | awk '{print $1}')
+          if [ -n "$CALLBACK_TOKEN" ]; then
+            sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$CALLBACK_TOKEN" -r | awk '{print $1}')
+            SIG_HEADER="X-Saif-Signature: sha256=$sig"
+            MODE="signed"
+          else
+            SIG_HEADER="X-Saif-Signature: unsigned"
+            MODE="UNSIGNED (no callback-token secret found)"
+            echo "::warning title=Unsigned callback::Gateway must treat this as unauthenticated"
+          fi
           curl -sfS -X POST "$CB" -H "Content-Type: application/json" \
-            -H "X-Saif-Signature: sha256=$sig" \
+            -H "$SIG_HEADER" \
             -H "X-Saif-Job: ${JOB_ID:-manual}" \
             --retry 3 --retry-delay 5 -d "$body" \
             || { echo "::error::gateway callback failed at $CB (host unreachable or rejected)"; exit 1; }
+          echo "- callback sent to \`$CB\` ($MODE)" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload run artifacts (encrypted Actions artifact, kept as fallback)
+      - name: Upload run artifacts (encrypted Actions artifact, fallback)
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.gate.outputs.safe_name }}-${{ steps.gate.outputs.run_tag }}
           path: output/
           retention-days: 14
           compression-level: 0
+          if-no-files-found: warn
 
       - name: Result summary
         if: always()
@@ -245,4 +281,5 @@ jobs:
             echo "- job_id: \`${JOB_ID:-manual}\`"
             echo "- portal_url: ${{ steps.token.outputs.portal_url || '(not minted)' }}"
             echo "- callback: ${{ steps.gate.outputs.callback_url || '(none)' }}"
+            echo "- artifacts: \`${{ github.event.inputs.artifact_types }}\`"
           } >> "$GITHUB_STEP_SUMMARY"

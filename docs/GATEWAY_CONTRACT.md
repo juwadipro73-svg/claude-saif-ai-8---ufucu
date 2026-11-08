@@ -84,20 +84,30 @@ project permission) लगेगा — unauthenticated `POST /apps.json` अब
 - Website delivery: portal server-side Drive से fetch करके stream करे, या expiring
   signed redirect — implementation portal की तरफ; builder सिर्फ file id भेजता है।
 
-## 6. Secret/Variable NAME mapping
+## 6. Secret/Variable NAME mapping (owner decisions, 2026-11-08)
 
-| Name (exact)                         | Kind    | Scope / use                                             | Status |
-|--------------------------------------|---------|---------------------------------------------------------|--------|
-| `GCP_CREDENTIALS`                    | secret  | SA JSON; scopes `drive.file`, `firebase.database`, `userinfo.email`; SA को Drive folder पर **Editor**, GCP project पर **roles/firebasedatabase.admin** चाहिए | existing (referenced by old yml) — owner confirm |
-| `GDRIVE_FOLDER_ID`                   | secret  | private folder id string                                | existing — owner confirm |
-| `FIREBASE_DB_URL`                    | secret  | RTDB **origin only** `https://<db>.firebaseio.com`      | existing — owner confirm |
-| `SAIF_GATEWAY_CALLBACK_TOKEN`        | secret  | random ≥ 32 bytes; केवल callback HMAC कुंजी             | **NEW** — owner create |
-| `SAIF_DOWNLOAD_PORTAL_URL`           | variable| e.g. `https://saifai-downloads.ai.studio`               | **NEW** — owner create |
-| `SAIF_CLOUD_API_BASE_URL`            | variable| gateway base; default callback = `<base>/api/build-complete` | **NEW** — owner create |
+**Confirmed present** (owner ने confirm किया, workflow इन्हीं पर rely करता है):
 
-> मैंने secret NAMES (values नहीं!) GitHub API से verify करने की कोशिश की — sandbox
-> token को `actions/secrets` read permission नहीं (HTTP 403), इसलिए names की
-> confirmation सिर्फ Settings UI से owner कर सकते हैं।
+| Name | Kind | Scope / requirement |
+|------|------|---------------------|
+| `GCP_CREDENTIALS` | secret | SA JSON; scopes `drive.file`, `firebase.database`, `userinfo.email`; SA को Drive folder पर **Editor**, GCP project पर **roles/firebasedatabase.admin** |
+| `GDRIVE_FOLDER_ID` | secret | private folder id string |
+| `FIREBASE_DB_URL` | secret | RTDB **origin only**, e.g. `https://<db>.firebaseio.com` |
+
+**Reuse-only policy** (owner: "मौजूदा names से ही continue") — कोई नया name create करना
+अनिवार्य नहीं। Workflow इन candidates को **secret-first, फिर variable** क्रम में resolve
+करता है; सब missing होने पर वो feature degrade होता है (fatal नहीं), summary में flag होता है:
+
+| Feature | Candidate names (order) | Missing होने पर |
+|---------|------------------------|-----------------|
+| Portal base (one-time link URL) | `SAIF_DOWNLOAD_PORTAL_URL` | `portalUrl` खाली; Drive ids फिर भी RTDB में sync |
+| API base → default callback | `SAIF_CLOUD_API_BASE_URL` | callback सिर्फ dispatch input `callback_url` से |
+| RTDB alt (with `FIREBASE_DB_URL`) | `SAIF_FIREBASE_DATABASE_URL` | n/a (primary confirmed) |
+| Callback HMAC key | `SAIF_GATEWAY_CALLBACK_TOKEN`, `SAIF_CALLBACK_TOKEN`, `SAIF_GATEWAY_TOKEN` | callback **UNSIGNED** जाता है + warning; बाद में कोई-एक name add करते ही signed |
+
+> NOTE: जिस भी name को secret की जगह variable बनाया गया है, workflow दोनों context में
+> देखता है — value कभी log नहीं होती। Names लिस्ट करने का GitHub API access इस sandbox
+> में 403 है, इसलिए ऊपर की तालिका owner-confirmation पर आधारित है।
 
 ## 7. Test plan (claim करने से पहले)
 

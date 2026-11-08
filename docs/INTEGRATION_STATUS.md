@@ -24,25 +24,22 @@
   table + L0–L4 test plan।
 - `docs/INTEGRATION_STATUS.md`: यह file।
 
+## Owner answers (2026-11-08)
+
+- ✅ `GCP_CREDENTIALS`, `GDRIVE_FOLDER_ID`, `FIREBASE_DB_URL` — **तीनों names repo में मौजूद हैं** (owner confirmed)।
+- ✅ नई names create नहीं करनी — **reuse-only**: `SAIF_DOWNLOAD_PORTAL_URL`, `SAIF_CLOUD_API_BASE_URL`, `SAIF_FIREBASE_DATABASE_URL` को secret/variable जैसे भी हैं first-nonempty resolve होगा; callback key के लिए `SAIF_GATEWAY_CALLBACK_TOKEN` / `SAIF_CALLBACK_TOKEN` / `SAIF_GATEWAY_TOKEN` में से जो मौजूद हो (none → unsigned callback + warning)।
+- ✅ Build trigger: **app backend/website से REST `workflow_dispatch`** (job_id + callback_url inputs) — wiring इसी पर है।
+- ⏳ Owner PR #4 के key gateway files **paste** करेंगे → schema final align होगा।
+
 ## ❌ Blocked — मैं verify/run नहीं कर सकता (owner action चाहिए)
 
-1. **Secret/variable names live-validate** — UI में जाकर names confirm करना होगा
-   (§6 table में exact names दिए हैं)।
-2. **नए names create** — `SAIF_GATEWAY_CALLBACK_TOKEN` (secret),
-   `SAIF_DOWNLOAD_PORTAL_URL`, `SAIF_CLOUD_API_BASE_URL` (variables)।
-3. **Manual test dispatch (L1)** — मैं REST dispatch नहीं कर सकता (dispatch call 403);
-   owner को Actions → Run workflow से L1 चलाना होगा।
-4. **Drive/RTDB/portal reachability** — sandbox network block; L2–L4 केवल GitHub
-   runner / owner environment से होगा।
-5. **App-side contract match** — PR #4 के gateway file (`cloud/backend`,
-   `cloud/builder-template`) मुझे repo access न होने से पढ़े नहीं जा सके। अगर वहाँ
-   callback schema अलग है, yml को उसी से align करना होगा — file paste/push सबसे तेज़ रास्ता।
+1. **Secret/variable values की live sanity** — value-level जाँच (folder id valid, RTDB URL reachable) पहली live run में ही होगी; मैं names list तक नहीं पढ़ सकता (403)।
+2. **Manual test dispatch (L1)** — REST dispatch मेरे token से 403; owner को Actions → Run workflow से L1 चलाना होगा (दोबारा: पहले L0 नहीं — secrets confirmed हैं, सीधे `prompt=TestApp` से L1 उचित)।
+3. **Drive/RTDB/portal reachability** — sandbox network block; L2–L4 केवल GitHub runner / owner environment से।
+4. **App-side contract match** — `cloud/backend` + `cloud/builder-template` files की copy आते ही callback schema/dispatch shape final match करूँगा।
 
 ## अगला कदम (owner)
 
-1. §6 की names create/confirm करें (values आपके पास ही रहें)।
-2. Actions → "SaifAI Auto Builder Master" → Run workflow (inputs खाली) = **L0**;
-   फिर secrets डालकर `prompt=TestApp` = **L1**।
-3. L1 pass होते ही `webhook.site` पर L2 (signed callback)।
-4. Portal deploy कोड app repo में है → मुझे वो files दिखाएँ तो मैं portal का
-   one-time-consume logic verify/complete करूँगा।
+1. Actions → "SaifAI Auto Builder Master" → Run workflow, `prompt=TestApp` = **L1**: pass पर private Drive files + RTDB `/downloadTokens/<t>` दोनों बनेंगे।
+2. L1 pass → `callback_url=https://webhook.site/<uuid>` डालकर job_id के साथ run = **L2** signed/unsigned callback देखें।
+3. Gateway files paste करें → मैं portal one-time-consume (`/d/{token}` → Drive stream + `used:true`) और dispatch code वहीं complete/align कर दूँगा।
