@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Download APK — SaifAI Builder</title>
+
+<!--
+  ============================================================================
+  Ad-gated download page.
+  App isko aise kholta hai:  download.html?url=<apk-link>&name=<app-name>
+
+  Host karne ke options:
+    • Firebase Hosting  (firebase deploy)
+    • GitHub Pages      (repo Settings → Pages → /web folder)
+    • Netlify / Vercel  (drag & drop)
+
+  Host karne ke baad uska URL app me daalo:
+    gradle.properties → AD_GATE_URL=https://your-host/download.html
+    (ya app ke ⋮ → Settings dialog me)
+
+  Ads: neeche ADSENSE block me apna client/slot bharo. Approval na hone tak
+  placeholder dikhega, page phir bhi kaam karega.
+  ============================================================================
+-->
+<style>
+  :root {
+    --brand: #5b4bff;
+    --brand-2: #8b5cf6;
+    --bg: #0d0b1a;
+    --card: #17142b;
+    --text: #f4f2ff;
+    --muted: #a5a1c4;
+    --ok: #22c55e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(900px 500px at 15% -10%, rgba(91,75,255,.45), transparent 60%),
+      radial-gradient(700px 400px at 90% 0%, rgba(139,92,246,.35), transparent 55%),
+      var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+  }
+  .card {
+    width: 100%;
+    max-width: 460px;
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 22px;
+    padding: 22px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: rgba(91,75,255,.14);
+    border: 1px solid rgba(91,75,255,.35);
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+  h1 {
+    margin: 14px 0 6px;
+    font-size: 22px;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+  .sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+  .ad-slot {
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    border: 1px dashed rgba(255,255,255,.18);
+    border-radius: 16px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .progress {
+    height: 8px;
+    width: 100%;
+    background: rgba(255,255,255,.1);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .progress > i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    transition: width .25s linear;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--brand-2);
+    animation: pulse 1.2s infinite ease-in-out;
+  }
+  @keyframes pulse { 0%,100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: 0;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+    background: linear-gradient(135deg, var(--brand), var(--brand-2));
+    cursor: pointer;
+  }
+  .btn[disabled] { opacity: .5; cursor: not-allowed; }
+  .btn.ready { background: linear-gradient(135deg, #16a34a, var(--ok)); }
+  .hint { margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .link { color: var(--brand-2); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">SaifAI Builder</span>
+    <h1 id="title">Aapka APK ready hai</h1>
+    <p class="sub" id="subtitle">Download abhi shuru ho raha hai…</p>
+
+    <!-- ===================== AD SLOT =====================
+         AdSense approve hone ke baad <head> me ye script add karo:
+         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX" crossorigin="anonymous"></script>
+         Aur neeche wala comment kholo: -->
+    <div class="ad-slot" id="adSlot">
+      <!--
+      <ins class="adsbygoogle"
+           style="display:block;width:100%;min-height:250px"
+           data-ad-client="ca-pub-XXXXXXXX"
+           data-ad-slot="1234567890"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      -->
+      <span>Ad space — 250×250<br />(AdSense slot yahan aayega)</span>
+    </div>
+    <!-- =================================================== -->
+
+    <div class="progress"><i id="bar"></i></div>
+    <div class="status"><span class="dot"></span><span id="status">Download link taiyaar kar rahe hain…</span></div>
+
+    <a class="btn" id="btn" href="#" aria-disabled="true">Wait… 5</a>
+    <p class="hint">
+      Agar download apne aap shuru na ho to button dabao.<br />
+      Android me <b>“Unknown sources”</b> allow karna zaroori ho sakta hai.
+    </p>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CONFIG = {
+    countdownSeconds: 5,   // ad dikhne ka time
+    autoDownload: true     // countdown ke baad khud download start
+  };
+
+  var params = new URLSearchParams(window.location.search);
+  var target = params.get("url") || "";
+  var name = params.get("name") || "app";
+
+  var btn = document.getElementById("btn");
+  var bar = document.getElementById("bar");
+  var statusEl = document.getElementById("status");
+  var titleEl = document.getElementById("title");
+
+  // Sirf http(s) links allow — javascript:/data: jaise injection se bacho.
+  var safeTarget = /^https?:\/\//i.test(target) ? target : "";
+  var safeName = name.replace(/[^A-Za-z0-9 ._-]/g, "").slice(0, 60) || "app";
+
+  document.title = safeName + " — Download";
+  titleEl.textContent = safeName;
+  document.getElementById("subtitle").textContent = "Download abhi shuru ho raha hai…";
+
+  if (!safeTarget) {
+    statusEl.textContent = "Invalid download link.";
+    btn.textContent = "Link available nahi hai";
+    btn.setAttribute("aria-disabled", "true");
+    return;
+  }
+
+  btn.href = safeTarget;
+  btn.setAttribute("download", safeName + ".apk");
+
+  var total = CONFIG.countdownSeconds;
+  var left = total;
+  var started = false;
+
+  function tick() {
+    left -= 1;
+    bar.style.width = Math.min(100, ((total - left) / total) * 100) + "%";
+
+    if (left > 0) {
+      btn.textContent = "Wait… " + left;
+      statusEl.textContent = "Download link " + left + "s me unlock hoga…";
+      setTimeout(tick, 1000);
+      return;
+    }
+
+    bar.style.width = "100%";
+    statusEl.textContent = "Ready! Download shuru ho raha hai…";
+    btn.textContent = "⬇ Download APK";
+    btn.classList.add("ready");
+    btn.removeAttribute("aria-disabled");
+
+    if (CONFIG.autoDownload) startDownload();
+  }
+
+  function startDownload() {
+    if (started) return;
+    started = true;
+    // iframe se download trigger — iOS/Android dono par page rehta hai.
+    var frame = document.createElement("iframe");
+    frame.style.display = "none";
+    frame.src = safeTarget;
+    document.body.appendChild(frame);
+    statusEl.textContent = "Download start ho gaya. Notification/Downloads check karo.";
+    setTimeout(function () {
+      window.location.href = safeTarget;
+    }, 1200);
+  }
+
+  btn.addEventListener("click", function (event) {
+    if (btn.getAttribute("aria-disabled") === "true") {
+      event.preventDefault();
+      return;
+    }
+    startDownload();
+  });
+
+  bar.style.width = "4%";
+  statusEl.textContent = "Download link " + left + "s me unlock hoga…";
+  btn.textContent = "Wait… " + left;
+  setTimeout(tick, 1000);
+})();
+</script>
+</body>
+</html>
