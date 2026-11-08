@@ -1,5 +1,27 @@
 # Integration Status — 2026-11-08 (ईमानदार ledger)
 
+## Real contract v2 — owner ने PR #4 (f29e032) का सही contract दिया
+
+**Mismatches fixed in PR #2 (v1 गलतियाँ → v2):**
+
+| v1 (गलत) | v2 (असली contract) |
+|-----------|---------------------|
+| dispatch inputs: prompt, callback_url, artifact_types | केवल `job_id` (UUID) |
+| prompt workflow input से | prompt/kind/project/assets को GCS `jobs/<job_id>/input.json` से |
+| HMAC-SHA256 `X-Saif-Signature` header | केवल `Authorization: Bearer WORKER_CALLBACK_SECRET` |
+| एक callback endpoint (any URL) | fixed endpoints `/api/worker/progress` + `/api/worker/complete` |
+| कई artifacts + files{} map | एक kind → एक artifact → एक `driveFileId` |
+| worker खुद token mint + RTDB `/downloadTokens`, `/jobs` लिखता | RTDB/claim पूरी तरह gateway-side (`cloudJobs/<jobId>`, `apps/<uid>/<jobId>`, `/download/<jobId>#claim=…`) |
+| portal `/d/<token>` | portal `/download/<jobId>#claim=<TOKEN>` + `inspect/claimDownload` |
+
+**Architecture change**: heavy logic अब `scripts/*.sh` में (workflow thin wrapper) —
+इसलिए पूरा contract offline testable है। `tests/run_tests.sh` stubbed `curl` के साथ
+~30 asserts चलाता है (dispatch shape, GCS staging, SHA-256/size verification,
+Bearer callback bodies byte-for-byte, failure path, forbidden legacy patterns)।
+
+Phone upload flow (`/api/push` → signed GCS PUT → `/api/push/complete` → Drive →
+one-time link) अलग है — builder runs उसे fix नहीं करते (owner ने confirm किया)।
+
 ## ✅ Verified इस session में (sandbox से)
 
 | Item | Fact | Proof |
@@ -12,34 +34,41 @@
 | Secret names list | **403** — token को `actions/secrets` read scope नहीं; names confirm करना owner-side UI काम है | gh secret list |
 | External network | sandbox से `ai.studio`, `run.app`, `firebaseio.com`, `googleapis.com` सब पर TLS block (HTTP 000) — केवल github.com + npm/pypi allowlist खुले हैं | curl SSL_ERROR_SYSCALL |
 
-## 🔧 इस PR में किया गया
+## 🔧 इस PR में किया गया (final, contract v2)
 
-- `build.yml` पूरी तरह rewrite: gateway contract v1 (`job_id`, `callback_url`,
-  `artifact_types`), validated inputs, private Drive multipart upload (private files,
-  no public links), one-time token mint + masked logs, authenticated RTDB writes to
-  `/downloadTokens/{token}` + `/jobs/{jobId}` (not `/apps.json`), HMAC-signed
-  completion callback (always), encrypted Actions artifact fallback, `permissions:
-  contents: read`, permissions/injection fixes (prompt sanitize, quoted curl, `-sfS` fail-fast)।
-- `docs/GATEWAY_CONTRACT.md`: dispatch/callback/RTDB schemas + secret-name mapping
-  table + L0–L4 test plan।
-- `docs/INTEGRATION_STATUS.md`: यह file।
+- `build.yml` thin wrapper: **केवल `job_id`** input; सारा काम `scripts/*.sh` में।
+- `scripts/10_validate.sh` — UUID check + required NAMES (WORKER_CALLBACK_SECRET,
+  SAIF_CLOUD_API_BASE_URL, SAIF_GCS_BUCKET included), missing name exact-error.
+- `scripts/20_fetch_input.sh` — private GCS `jobs/<job_id>/input.json` (JSON API,
+  SA bearer), jobId exact-match, kind ∈ apk|zip|video, prompt sanitize।
+- `scripts/30_progress.sh` — `POST /api/worker/progress {"jobId","status":"building"}`
+  Bearer से (non-fatal on failure)।
+- `scripts/40_verify_assets.sh` — हर asset का size + SHA-256, mismatch → fail।
+- `scripts/50_build.sh` — kind से एक artifact (apk/zip/video placeholder; credentials
+  कभी embed नहीं)।
+- `scripts/60_drive_upload.sh` — multipart Drive upload, file PRIVATE रहती है।
+- `scripts/90_callback_complete.sh` — `ready` {jobId,status,driveFileId} या
+  `failed` {jobId,status,error: <failing step + run URL>}, हमेशा (always())।
+- `tests/run_tests.sh` — offline contract test-suite (stubbed curl)।
+- 404-wाला third-party Drive action हटा दिया; `google-github-actions/auth@v2.1.13`।
 
 ## Owner answers (2026-11-08)
 
-- ✅ `GCP_CREDENTIALS`, `GDRIVE_FOLDER_ID`, `FIREBASE_DB_URL` — **तीनों names repo में मौजूद हैं** (owner confirmed)।
-- ✅ नई names create नहीं करनी — **reuse-only**: `SAIF_DOWNLOAD_PORTAL_URL`, `SAIF_CLOUD_API_BASE_URL`, `SAIF_FIREBASE_DATABASE_URL` को secret/variable जैसे भी हैं first-nonempty resolve होगा; callback key के लिए `SAIF_GATEWAY_CALLBACK_TOKEN` / `SAIF_CALLBACK_TOKEN` / `SAIF_GATEWAY_TOKEN` में से जो मौजूद हो (none → unsigned callback + warning)।
-- ✅ Build trigger: **app backend/website से REST `workflow_dispatch`** (job_id + callback_url inputs) — wiring इसी पर है।
-- ⏳ Owner PR #4 के key gateway files **paste** करेंगे → schema final align होगा।
+- ✅ `GCP_CREDENTIALS`, `GDRIVE_FOLDER_ID`, `FIREBASE_DB_URL` repo में मौजूद (FIREBASE_DB_URL workflow को अब चाहिए नहीं — RTDB gateway-side)।
+- ✅ नई names create किए बिना reuse; contract के हिसाब से worker को चाहिए: + `WORKER_CALLBACK_SECRET`, `SAIF_CLOUD_API_BASE_URL`, `SAIF_GCS_BUCKET` (secret या variable)।
+- ✅ Trigger: gateway से REST `workflow_dispatch` (inputs केवल job_id)।
+- ✅ Real contract owner ने paste किया — v1 हटाकर v2 align हो गया।
 
 ## ❌ Blocked — मैं verify/run नहीं कर सकता (owner action चाहिए)
 
-1. **Secret/variable values की live sanity** — value-level जाँच (folder id valid, RTDB URL reachable) पहली live run में ही होगी; मैं names list तक नहीं पढ़ सकता (403)।
-2. **Manual test dispatch (L1)** — REST dispatch मेरे token से 403; owner को Actions → Run workflow से L1 चलाना होगा (दोबारा: पहले L0 नहीं — secrets confirmed हैं, सीधे `prompt=TestApp` से L1 उचित)।
-3. **Drive/RTDB/portal reachability** — sandbox network block; L2–L4 केवल GitHub runner / owner environment से।
-4. **App-side contract match** — `cloud/backend` + `cloud/builder-template` files की copy आते ही callback schema/dispatch shape final match करूँगा।
+1. **Value-level sanity** — WORKER_CALLBACK_SECRET असल में gateway पर configured same key से match करता है या नहीं, bucket/folder ids valid हैं या नहीं — पहली live run में ही पता चलेगा।
+2. **L1 live dispatch** — मेरे token से dispatch/403; owner: Actions UI → Run workflow, `job_id` = एक real staged UUID (gateway से) या manually staged `gs://<bucket>/jobs/<uuid>/input.json`।
+3. **Drive/GCS/gateway reachability** — sandbox network block; runner से ही होगा।
+4. **Phone-upload flow** — अलग codepath (app `POST /api/push` …); इस PR से अछूता; live test तभी जब gateway+portal deployed, तीनों public URL variables set, APK rebuilt।
+5. **PR #4 repo read-access** — files मुझे सीधे नहीं खुलतीं (403); अगर schema और झुकाना हो तो snippets paste करें।
 
 ## अगला कदम (owner)
 
-1. Actions → "SaifAI Auto Builder Master" → Run workflow, `prompt=TestApp` = **L1**: pass पर private Drive files + RTDB `/downloadTokens/<t>` दोनों बनेंगे।
-2. L1 pass → `callback_url=https://webhook.site/<uuid>` डालकर job_id के साथ run = **L2** signed/unsigned callback देखें।
-3. Gateway files paste करें → मैं portal one-time-consume (`/d/{token}` → Drive stream + `used:true`) और dispatch code वहीं complete/align कर दूँगा।
+1. Repo secrets/vars में ये names की उपस्थिति confirm: `WORKER_CALLBACK_SECRET`, `SAIF_CLOUD_API_BASE_URL`, `SAIF_GCS_BUCKET` (+ पहले से confirmed तीनों)।
+2. Gateway से एक real job stage करके (या हाथ से `input.json` डालकर) UI से L1 run।
+3. L1 green → gateway पर job `ready` दिखे, RTDB `cloudJobs/<jobId>` update (gateway code), portal से claim एक बार/दो बार = L2/L3।
