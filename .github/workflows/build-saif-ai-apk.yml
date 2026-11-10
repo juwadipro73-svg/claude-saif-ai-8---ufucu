@@ -1,0 +1,171 @@
+name: Build SAIF AI APK (from AALU.zip)
+
+# Unpacks the app archive kept in this repository, compiles the debug APK and publishes it to the
+# rolling "saif-ai-apk" prerelease so there is always one stable download link.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "AALU.zip"
+      - ".github/workflows/build-saif-ai-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-saif-ai-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    env:
+      # Public origins baked into the APK. They are not secrets; when unset, cloud builds simply
+      # fall back to on-device compilation.
+      SAIF_CLOUD_API_BASE_URL: ${{ vars.SAIF_CLOUD_API_BASE_URL || secrets.SAIF_CLOUD_API_BASE_URL || '' }}
+      SAIF_DOWNLOAD_PORTAL_URL: ${{ vars.SAIF_DOWNLOAD_PORTAL_URL || secrets.SAIF_DOWNLOAD_PORTAL_URL || 'https://saifai-downloads.ai.studio' }}
+      SAIF_FIREBASE_DATABASE_URL: ${{ vars.SAIF_FIREBASE_DATABASE_URL || secrets.SAIF_FIREBASE_DATABASE_URL || 'https://saif-ai-2e541-default-rtdb.firebaseio.com' }}
+
+    steps:
+    # Exit code 143 (SIGTERM) while dexing = the runner ran out of memory. Free disk and add swap
+    # before anything else so the Gradle/Kotlin JVMs are never killed.
+    - name: Free disk space and add swap
+      shell: bash
+      run: |
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY/CodeQL" || true
+        sudo swapoff -a || true
+        sudo fallocate -l 10G /mnt/swapfile
+        sudo chmod 600 /mnt/swapfile
+        sudo mkswap /mnt/swapfile
+        sudo swapon /mnt/swapfile
+        free -m
+        df -h / /mnt
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    # app/build.gradle.kts runs `go build` for agy_ide_bridge (the local bridge server).
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Unpack SAIF AI source
+      shell: bash
+      run: |
+        set -euo pipefail
+        rm -rf saif-ai-source
+        mkdir -p saif-ai-source
+        unzip -q AALU.zip -d saif-ai-source
+        dir="$(find saif-ai-source -maxdepth 1 -mindepth 1 -type d | head -n 1)"
+        test -n "$dir" || { echo "::error::AALU.zip does not contain a project folder"; exit 1; }
+        test -f "$dir/settings.gradle.kts" || { echo "::error::$dir is not the Android project root"; exit 1; }
+        echo "APP_DIR=$dir" >> "$GITHUB_ENV"
+        echo "Unpacked project: $dir"
+
+    - name: Pick a Gradle launcher
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd "$APP_DIR"
+        chmod +x gradlew || true
+        if ./gradlew --version >/dev/null 2>&1; then
+          echo "GRADLE=./gradlew" >> "$GITHUB_ENV"
+        else
+          echo "::warning::gradlew could not download its distribution; using the runner's Gradle."
+          echo "GRADLE=gradle" >> "$GITHUB_ENV"
+        fi
+        gradle --version || true
+
+    - name: Build debug APK
+      shell: bash
+      run: |
+        set -o pipefail
+        cd "$APP_DIR"
+        ( while true; do date +%T; free -m | awk 'NR==2||NR==3'; sleep 30; done ) > /tmp/mem.log 2>&1 &
+        # Phase 1: Kotlin/Java only, so the compiler daemon is gone before dexing starts.
+        $GRADLE :app:compileStandardDebugKotlin :app:compileStandardDebugJavaWithJavac \
+          --no-daemon --no-configuration-cache 2>&1 | tee /tmp/build.log
+        pkill -f KotlinCompileDaemon || true
+        sleep 3
+        free -m
+        # Phase 2: dex + package (the compile tasks are already up to date).
+        $GRADLE :app:assembleStandardDebug --no-daemon --no-configuration-cache 2>&1 | tee -a /tmp/build.log
+
+    - name: Memory diagnostics
+      if: failure()
+      shell: bash
+      run: |
+        echo "#### memory log (last 40 lines) ####"; tail -40 /tmp/mem.log || true
+        echo "#### kernel OOM killer ####"; sudo dmesg | grep -iE "out of memory|killed process" | tail -10 || true
+
+    - name: Publish compile errors
+      if: failure()
+      shell: bash
+      run: |
+        mkdir -p ci-logs
+        {
+          echo "#### e:/w: LINES ####"
+          grep -E "^(e:|w:) " /tmp/build.log || echo "(none)"
+          echo
+          echo "#### FAILED TASK / SUMMARY ####"
+          grep -E "^> Task .*FAILED|^FAILURE:|Execution failed for task|What went wrong|^Caused by:|BUILD FAILED" /tmp/build.log || true
+          echo
+          echo "#### LAST 250 LINES ####"
+          tail -250 /tmp/build.log
+        } > ci-logs/compile-errors.txt || true
+
+    - name: Upload compile log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: saif-ai-compile-log
+        path: ci-logs/compile-errors.txt
+
+    - name: Locate the APK
+      shell: bash
+      run: |
+        set -euo pipefail
+        apk="$(find "$APP_DIR/app/build/outputs/apk" -name "*.apk" | head -n 1)"
+        test -n "$apk" || { echo "::error::No APK was produced"; exit 1; }
+        cp "$apk" "$RUNNER_TEMP/app-standard-debug.apk"
+        echo "APK_PATH=$RUNNER_TEMP/app-standard-debug.apk" >> "$GITHUB_ENV"
+        ls -la "$RUNNER_TEMP/app-standard-debug.apk"
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SAIF-AI-debug-APK
+        path: ${{ env.APK_PATH }}
+
+    - name: Publish to the rolling saif-ai-apk prerelease
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        tag="saif-ai-apk"
+        note="Rolling debug build of SAIF AI from branch \`${GITHUB_REF_NAME}\` (commit \`${GITHUB_SHA}\`).
+        Debug builds are unsigned with the committed debug key - not for production distribution."
+        if gh release view "$tag" >/dev/null 2>&1; then
+          gh release upload "$tag" "$APK_PATH" --clobber
+          gh release edit "$tag" --prerelease --title "SAIF AI - debug APK (rolling)" --notes "$note"
+        else
+          gh release create "$tag" "$APK_PATH" --prerelease \
+            --title "SAIF AI - debug APK (rolling)" --notes "$note"
+        fi
+        echo "Download: https://github.com/${GITHUB_REPOSITORY}/releases/tag/$tag"
