@@ -113,6 +113,47 @@ commands are blocked regardless of approval.
 It is wired into **Settings → SAIF AI AGENT (OWN ENGINE)**, including a "Run a test task" button so
 it can be watched working end to end.
 
+## 7c. The upstream-derived engine has been removed and replaced
+
+The `com.example.gemini` package (**204 files, ~96,440 lines**) came from an upstream GPL v3
+project. It has been deleted in full and replaced with ~11,000 lines of new code written for
+SAIF AI, in two new packages:
+
+**`com.example.saifcore`** — the engine:
+
+| File | What it does |
+|---|---|
+| `CoreModels.kt` | Messages, tool calls, attachments, conversations, questionnaires |
+| `CoreState.kt` | Connection status, install progress, daemon health, models and quotas |
+| `Markdown.kt` | A line-based markdown reader for the chat feed |
+| `Feed.kt` | Messages broken into keyed rows so streaming stays cheap |
+| `Backend.kt` | The agent backend: the tool loop, approvals, choices, cancellation |
+| `EngineVm.kt` | The engine ViewModel the UI watches |
+| `SessionStore.kt` | In-memory working set for one conversation |
+| `Prefs.kt` | Runtime preferences and the launcher-icon switch |
+| `LinuxEnv.kt` | The local Linux environment: install, verify, workspace |
+| `LocalBridge.kt` | A loopback HTTP server for handing files to other apps |
+| `Daemon.kt` | Workspace server client, git client, project and tab state |
+| `Slash.kt`, `Skills.kt` | Slash commands and importable skills |
+| `Accounts.kt` | Account state, session binding, the account-matching rule |
+| `Support.kt` | Startup, the update check, agent selection |
+| `Browser.kt`, `Avatar.kt` | Browser plugin host, avatar handling |
+| `ui/` | The bubble, block renderer, approval and question panels, engine settings |
+
+**`com.example.saifagent`** — the tool-calling runtime described in §7b.
+
+Also deleted: the `com.termux` package, the gRPC `.proto` schemas, the Go IDE bridge, the proto
+generator, the bundled browser extensions and docs, and the backup/restore shell scripts — none of
+which the rest of the app referenced.
+
+**Measured result:** upstream-derived source went from **~52%** of compared lines to **~1%**
+(26 files, ~640 lines), and what remains is Gradle configuration, the manifest and standard Android
+resource boilerplate. Re-measure with:
+
+```
+python3 tools/licence/provenance.py --upstream /tmp/upstream-antigem --write
+```
+
 ## 8. Licensing — measured, not guessed (inside the archive)
 
 Licensing was the main task in this build. Everything below is produced by comparing the tree against
