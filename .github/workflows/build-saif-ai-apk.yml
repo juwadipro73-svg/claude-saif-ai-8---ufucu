@@ -140,6 +140,14 @@ jobs:
           echo "#### LAST 250 LINES ####"
           tail -250 /tmp/build.log
         } > ci-logs/compile-errors.txt || true
+        # Compiler errors are also emitted as GitHub annotations so they are readable from the
+        # run summary without downloading the log archive.
+        grep -E "^e: " ci-logs/compile-errors.txt | head -40 | while IFS= read -r line; do
+          echo "::error::$line"
+        done
+        grep -E "^(FAILURE:|What went wrong:|Execution failed for task)" ci-logs/compile-errors.txt | head -10 | while IFS= read -r line; do
+          echo "::error::$line"
+        done
 
     - name: Upload compile log
       if: failure()
