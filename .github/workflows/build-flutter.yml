@@ -1,0 +1,71 @@
+name: Build Flutter Advance Calculator APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build Version Name'
+        required: false
+        default: 'v1.0.0'
+
+jobs:
+  build-apk:
+    name: Build Flutter APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Environment
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Saif-Advance-Calculator-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload APK to Google Drive (if credentials configured)
+        if: env.GCP_CREDENTIALS != ''
+        env:
+          GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        uses: adityak74/google-drive-upload-action@main
+        id: upload_to_drive
+        with:
+          credentials: ${{ secrets.GCP_CREDENTIALS }}
+          filename: "build/app/outputs/flutter-apk/app-release.apk"
+          folderId: ${{ secrets.GDRIVE_FOLDER_ID }}
+          name: "Saif_Advance_Calculator.apk"
+          overwrite: "true"
+
+      - name: Sync Download URL to Firebase RTDB (if configured)
+        if: env.FIREBASE_DB_URL != ''
+        env:
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
+        run: |
+          FILE_ID="${{ steps.upload_to_drive.outputs.fileId }}"
+          URL="${{ secrets.FIREBASE_DB_URL }}/apps.json"
+          JSON_DATA="{\"appName\": \"Saif Advance Calculator\", \"driveFileId\": \"$FILE_ID\", \"status\": \"Ready to Download\"}"
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_DATA" "$URL"
