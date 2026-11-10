@@ -1,6 +1,0 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="160dp" android:height="44dp"
-    android:viewportWidth="160" android:viewportHeight="44">
-    <!-- SAIF AI -->
-    <path android:fillColor="#7C5CE0" android:pathData="M8,29 L11,27 C13,30 19,31 21,28 C24,24 9,25 9,19 C9,13 19,11 24,16 L22,19 C19,16 13,16 13,19 C13,22 25,21 25,27 C25,34 13,36 8,29 Z M28,33 L36,13 L40,13 L48,33 L44,33 L42,28 L34,28 L32,33 Z M35,25 L41,25 L38,17 Z M52,13 L56,13 L56,33 L52,33 Z M62,13 L76,13 L76,17 L66,17 L66,22 L75,22 L75,26 L66,26 L66,33 L62,33 Z M86,33 L94,13 L98,13 L106,33 L102,33 L100,28 L92,28 L90,33 Z M93,25 L99,25 L96,17 Z M110,13 L114,13 L114,33 L110,33 Z" />
-</vector>
