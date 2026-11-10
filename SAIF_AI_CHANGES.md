@@ -28,6 +28,12 @@ in `VoiceSettings` / `saif_brand_kit` is rewritten to Kabir on first read. Chat 
 conversation and video narration therefore all use Kabir. `MainActivity.onCreate` calls
 `SaifVoice.enforceLock()` at startup.
 
+## 2b. Replies can still be read out loud
+
+The voice section is gone, but the "if the user wants" behaviour is kept: a single
+**Auto-speak replies** switch (AI AGENT & SKILLS) reads every answer out loud. It uses the locked
+voice, and no voice name is shown anywhere in the UI.
+
 ## 3. Slash commands actually run again
 
 * `MainActivity.onCreate` now calls `CustomSlashCommands.init()` at startup. Previously the user's
