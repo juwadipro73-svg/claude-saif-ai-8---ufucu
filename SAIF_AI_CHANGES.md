@@ -88,6 +88,31 @@ Behaviour:
 4. **Settings → Terminal Providers** shows the live progress and lets the user add any provider with
    its own base URL, model and API key (OpenAI-compatible or Anthropic-style).
 
+## 7b. New: SAIF AI's own agent runtime (`com.example.saifagent`)
+
+An original, self-contained tool-using agent engine — ~1,500 lines of new code written for SAIF AI
+and owned outright by it. It does not use any third-party agent engine.
+
+| File | What it does |
+|---|---|
+| `AgentTool.kt` | The tool contract: parameters, JSON schema, approval gate, the confined `ToolContext` |
+| `AgentProtocol.kt` | The strict JSON envelope between the runtime and the model, plus a tolerant parser |
+| `AgentRuntime.kt` | The loop: describe tools → one step → run it → show the result → repeat |
+| `ToolRegistry.kt` | The default kit: files, search, shell, web, answer |
+| `tools/WorkspaceTools.kt` | read / write / list / grep / mkdir / delete, all confined to one folder |
+| `tools/CommandTools.kt` | `run_command` behind a pluggable `ShellRunner`, with a hard safety policy |
+| `tools/WebTools.kt` | `http_get` (HTML → text) and an optional `web_search` endpoint |
+| `AgentPrefs.kt` | Settings: enabled, auto-approve, max steps, search endpoint |
+| `SaifAgent.kt` | The front door: workspace, shell choice, provider wiring, blocked-command policy |
+
+Design points: every path is resolved and checked to stay inside the workspace; anything that writes
+or runs asks first (auto-approve is off by default); a refusal is fed back to the model as
+information; a malformed reply is repaired instead of failing the run; and a handful of destructive
+commands are blocked regardless of approval.
+
+It is wired into **Settings → SAIF AI AGENT (OWN ENGINE)**, including a "Run a test task" button so
+it can be watched working end to end.
+
 ## 8. Licensing — measured, not guessed (inside the archive)
 
 Licensing was the main task in this build. Everything below is produced by comparing the tree against
