@@ -88,7 +88,46 @@ Behaviour:
 4. **Settings → Terminal Providers** shows the live progress and lets the user add any provider with
    its own base URL, model and API key (OpenAI-compatible or Anthropic-style).
 
-## 8. Licensing — see `LICENSE_AUDIT.md` (inside the archive)
+## 8. Licensing — measured, not guessed (inside the archive)
+
+Licensing was the main task in this build. Everything below is produced by comparing the tree against
+a real checkout of the upstream project (AntiGem by Santosh Kurmi, GPL v3).
+
+**The measurement** (`tools/licence/provenance.py`):
+
+| | files | lines |
+|---|---|---|
+| **Original SAIF AI code** (never existed upstream) | **672** | **~96,000** |
+| Identical to upstream (≥95% of lines) | 241 | 55,219 |
+| Modified upstream code (60–95%) | 86 | 54,928 |
+| Heavily reworked (20–60%) | 16 | 3,164 |
+| Effectively different (<20%) | 4 | 274 |
+
+No upstream file was copied under a different path, so your 672 files really are new work.
+
+**What was done:**
+
+* `tools/licence/provenance.py` — regenerates the table above any time, per file and per area.
+* `tools/licence/add_saif_headers.py` — stamped `Copyright (c) SAIF AI. All rights reserved.` on
+  **454 of your source files**, and refuses to stamp upstream-derived ones (it exits non-zero if one
+  ever carries the notice).
+* `LICENSE_AUDIT.md` — the honest legal position, including why "rewrite it with different names"
+  does not transfer copyright, and the three routes that do work.
+* `CLEANROOM_ROADMAP.md` — the phased plan you asked for: isolation boundary → specification →
+  subsystem-by-subsystem replacement, with effort estimates and the process a lawyer will need.
+* `DUAL_LICENCE_REQUEST.md` — a ready-to-send email asking the upstream author for a commercial
+  dual licence. **This is the fastest real route to owning the code; send it first.**
+* `GPL_SHIP_CHECKLIST.md` — the ship-today-under-GPL checklist, with where each item lives.
+* **Settings → LICENCES & OPEN SOURCE** (new, `SaifLicencesSection.kt`) — the in-app licence screen:
+  SAIF AI copyright, AntiGem attribution and GPL v3 status, Termux and Linux-runtime notices, and the
+  published source link (`SAIF_SOURCE_URL`).
+* CI now runs the provenance check on every build.
+
+**What was deliberately not done:** `LICENSE` and `THIRD_PARTY_NOTICES.md` were kept; no GPL file
+was deleted or re-licensed. Deleting the 347 upstream-derived files would remove the entire agent
+workspace — chat backends, terminal, IDE, MCP, plugins, the Go bridge and the generated protocol
+bindings — and there would be no app left to ship. Stripping the notices would turn a fixable
+compliance issue into wilful infringement. See §2 of `LICENSE_AUDIT.md` for the reasoning.
 
 The GPL v3 `LICENSE` and `THIRD_PARTY_NOTICES.md` were **kept**: about half of the app
 (`com/example/gemini`, ~100,000 lines) is based on AntiGem by Santosh Kurmi under GPL v3. Deleting

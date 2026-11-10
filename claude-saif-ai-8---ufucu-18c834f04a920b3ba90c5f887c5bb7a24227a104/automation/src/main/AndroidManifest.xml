@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SAIF AI AUTOMATION (library module of SAIF AI)
+
+  100% owned and credited to SAIF AI. No external credits, no external license requirements.
+  Project: https://github.com/shahudgg/saif-ai-director-
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+
+    <application>
+
+        <!-- Gives the library an application context at process start (no Application subclass needed). -->
+        <provider
+            android:name=".AutomationInitProvider"
+            android:authorities="${applicationId}.saif-automation-init"
+            android:exported="false"
+            android:initOrder="100" />
+
+        <activity
+            android:name=".ui.home.MainActivity"
+            android:exported="false"
+            android:label="@string/automation_app_name"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.memory.MemoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.voice.VoiceEnrollmentActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.settings.ApiConnectionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.settings.PersonaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.permission.PermissionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.settings.OverlayAvatarActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.settings.PrivacyShieldActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.settings.HandsFreeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisAssistant"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <service
+            android:name=".background.JarvisConversationService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="microphone|mediaPlayback|mediaProjection" />
+
+    </application>
+
+</manifest>

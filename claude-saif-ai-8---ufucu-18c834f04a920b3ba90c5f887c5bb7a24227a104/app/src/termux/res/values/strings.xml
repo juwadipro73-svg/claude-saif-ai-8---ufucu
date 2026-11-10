@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SAIF AI</string>
+    <string name="anti_term_name">SAIF AI</string>
+    <string name="termux_name">SAIF AI</string>
+</resources>

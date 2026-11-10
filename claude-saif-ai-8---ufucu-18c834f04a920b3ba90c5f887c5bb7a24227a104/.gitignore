@@ -1,0 +1,30 @@
+*.iml
+.gradle
+.kotlin
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.env
+debug.keystore
+/.build-outputs
+*.apk
+*.log
+node_modules/
+
+# Python bytecode (scripts/*.py are run by CI)
+__pycache__/
+*.pyc
+
+# Uploaded source archives — extracted into cloud/portal/
+*.zip
+*.tar.gz

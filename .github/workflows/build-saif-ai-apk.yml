@@ -77,6 +77,18 @@ jobs:
         echo "APP_DIR=$dir" >> "$GITHUB_ENV"
         echo "Unpacked project: $dir"
 
+    # Licence guard rail: verify that no upstream-derived (GPL) file carries a SAIF AI copyright
+    # notice, and print the measured provenance of this build. Fails the build if it ever happens.
+    - name: Licence provenance check
+      shell: bash
+      run: |
+        set -euo pipefail
+        git clone --depth 1 -q https://github.com/Santoshkurmi/antigem.git /tmp/upstream-antigem || \
+          { echo "::warning::Could not clone upstream; skipping provenance check"; exit 0; }
+        cd "$APP_DIR"
+        python3 tools/licence/provenance.py --upstream /tmp/upstream-antigem | tail -25
+        python3 tools/licence/add_saif_headers.py | tail -4
+
     - name: Pick a Gradle launcher
       shell: bash
       run: |

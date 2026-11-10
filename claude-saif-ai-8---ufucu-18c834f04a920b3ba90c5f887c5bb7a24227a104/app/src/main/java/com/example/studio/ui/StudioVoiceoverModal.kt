@@ -1,0 +1,289 @@
+/*
+ * Copyright (c) SAIF AI. All rights reserved.
+ * Original SAIF AI code. The app as distributed also contains third-party
+ * GNU GPL v3 material - see LICENSE and THIRD_PARTY_NOTICES.md.
+ */
+package com.example.studio.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.studio.state.StudioViewModel
+
+data class VoiceProfile(
+    val id: String,
+    val name: String,
+    val tone: String,
+    val description: String
+)
+
+@Composable
+fun StudioVoiceoverModal(
+    viewModel: StudioViewModel,
+    onDismiss: () -> Unit
+) {
+
+    var scriptText by remember {
+        mutableStateOf("Every frame tells a story. Step into the future of creative neural video production.")
+    }
+    var speechRate by remember { mutableFloatStateOf(1.0f) }
+    var audioDucking by remember { mutableStateOf(true) }
+
+    val voices = listOf(
+        VoiceProfile("fenrir", "Fenrir", "Cinematic Deep", "Deep resonant voice for movie trailers and teasers"),
+        VoiceProfile("nova", "Nova", "Energetic & Bold", "Punchy modern voice for reels and shorts"),
+        VoiceProfile("shimmer", "Shimmer", "Warm Storyteller", "Gentle, emotional tone for documentary & tutorials"),
+        VoiceProfile("alloy", "Alloy", "Crisp Tech", "Balanced and neutral tech narrator"),
+        VoiceProfile("aarav", "Aarav", "Hindi / Hinglish", "Natural Hindi flow for viral Indian creators")
+    )
+
+    var selectedVoice by remember { mutableStateOf(voices[0]) }
+
+    // Dynamic word count & Level 3 duration formula
+    val wordCount = remember(scriptText) {
+        val trimmed = scriptText.trim()
+        if (trimmed.isEmpty()) 0 else trimmed.split("\\s+".toRegex()).size
+    }
+    val calculatedDurationSec = remember(wordCount, speechRate) {
+        if (wordCount == 0) 2.0f
+        else ((wordCount * 0.38f) / speechRate).coerceIn(1.5f, 30.0f)
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.85f))
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF282724),
+                border = BorderStroke(1.5.dp, Color(0xFF7C5CE0).copy(alpha = 0.6f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(listOf(Color(0xFF7C5CE0), Color(0xFF9B82EC)))
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("AI Voiceover Studio", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "Voice preview • no speech synthesis here",
+                                    color = Color(0xFFB3A0F2),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFFD6D3C7))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Voice Character Selection
+                    Text("Select Voice Character", color = Color(0xFFD6D3C7), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        voices.forEach { voice ->
+                            val isSelected = selectedVoice.id == voice.id
+                            Surface(
+                                onClick = { selectedVoice = voice },
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) Color(0xFF7C5CE0).copy(alpha = 0.25f) else Color(0xFF2D2C29),
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF7C5CE0) else Color(0xFF373632))
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                    Text(
+                                        text = "🎙️ ${voice.name}",
+                                        color = if (isSelected) Color(0xFFB3A0F2) else Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = voice.tone,
+                                        color = Color(0xFFA8A59B),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Script Text Area
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Voiceover Script", color = Color(0xFFD6D3C7), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "$wordCount words • est. ${"%.1f".format(calculatedDurationSec)}s",
+                            color = Color(0xFF7C5CE0),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = scriptText,
+                        onValueChange = { scriptText = it },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF7C5CE0),
+                            unfocusedBorderColor = Color(0xFF373632),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedContainerColor = Color(0xFF242321),
+                            unfocusedContainerColor = Color(0xFF242321)
+                        ),
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Speed Slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Speech Rate", color = Color(0xFFD6D3C7), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${"%.2f".format(speechRate)}x", color = Color(0xFFB3A0F2), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Slider(
+                        value = speechRate,
+                        onValueChange = { speechRate = it },
+                        valueRange = 0.75f..1.5f,
+                        steps = 5,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color(0xFF7C5CE0),
+                            activeTrackColor = Color(0xFF7C5CE0),
+                            inactiveTrackColor = Color(0xFF373632)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Auto Audio Ducking Switch
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF2D2C29))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Auto Audio Ducking", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Ducks BGM volume during speech", color = Color(0xFFA8A59B), fontSize = 10.sp)
+                        }
+                        Switch(
+                            checked = audioDucking,
+                            onCheckedChange = { audioDucking = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Color(0xFF7C5CE0)
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Text("Voice choices in this panel are a preview only; no audio is generated here. Use SAIF Director to create and insert real narration.",
+                        color = Color(0xFFD6D3C7), fontSize = 11.sp, modifier = Modifier.padding(bottom = 10.dp))
+                }
+            }
+        }
+    }
+}

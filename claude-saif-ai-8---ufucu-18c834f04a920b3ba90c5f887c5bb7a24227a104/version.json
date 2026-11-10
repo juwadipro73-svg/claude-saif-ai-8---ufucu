@@ -1,0 +1,14 @@
+{
+  "version_code": 121,
+  "version_name": "1.0.21",
+  "min_supported_version_code": 1,
+  "changelog": [
+    "Google account picker and Firebase verification replace guest and password login",
+    "Import account-scoped GitHub skills and use them with chat slash commands",
+    "Direct live conversation, readable model quota and microphone controls",
+    "Automatically set up the local workspace after sign-in; refresh SAIF AI branding",
+    "Verify Antigravity matches the Google account before chat or tool actions",
+    "Keep new local chats, project histories and personal memory separate by Firebase account"
+  ],
+  "is_critical": false
+}
