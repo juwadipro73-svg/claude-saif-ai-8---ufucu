@@ -58,11 +58,14 @@ jobs:
       with:
         node-version: '22'
 
-    # app/build.gradle.kts runs `go build` for agy_ide_bridge (the local bridge server).
+    # app/build.gradle.kts cross-compiles termux-daemon/server.go into the APK's native libraries.
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.26'
+        # Nothing to cache: the daemon is one file using only the standard library, and there is no
+        # go.mod, so setup-go's default cache restore fails looking for a go.sum that will not exist.
+        cache: false
 
     - name: Unpack SAIF AI source
       shell: bash
