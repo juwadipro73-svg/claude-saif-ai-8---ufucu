@@ -1,0 +1,3 @@
+
+# The app source is shipped as AALU.zip; never commit the extracted tree.
+/claude-saif-ai-8-*/

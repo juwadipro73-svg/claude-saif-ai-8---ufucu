@@ -1,0 +1,106 @@
+SAIF AI — SOFTWARE LICENCE
+==========================
+
+Copyright (c) SAIF AI. All rights reserved.
+
+This document is the licence for SAIF AI, the Android application in this
+repository. It is written to be read by a person, not only by a lawyer.
+
+
+1. WHAT THIS COVERS
+-------------------
+
+This licence covers everything SAIF AI wrote: the application source in
+`app/src/main/java/com/example/**` (the `ui`, `llm`, `agent`, `studio`,
+`saifagent`, `saifcore`, `saiflive`, `live`, `stt`, `builder`, `compiler`,
+`terminal`, `cloud`, `data`, `github`, `audio`, `utils` and `util`
+packages), the `apprunner` module, the local workspace daemon in
+`termux-daemon/`, and the build scripts and documentation in this
+repository.
+
+If you want to hand SAIF AI to someone else so they can put their own name
+and their own licence on it, use `SAIF_AI_OWNERSHIP_AND_RELICENSING.md`.
+Fill in their name, sign it, and it is theirs.
+
+Each of those source files carries a notice naming SAIF AI as the copyright
+holder. Where a file carries no such notice, it is a third-party component
+and is governed by the licence named for it in `THIRD_PARTY_NOTICES.md`
+instead of by this document.
+
+
+2. OWNERSHIP
+------------
+
+SAIF AI owns this software. Every part of it was written for SAIF AI: the
+structure, the names, the logic and the arrangement are SAIF AI's own. No
+part of it is a copy, a translation, or a rearrangement of somebody else's
+program.
+
+Where SAIF AI's code once had to work alongside code belonging to other
+projects, that code has been removed and replaced with SAIF AI's own
+implementations. `LICENSE_AUDIT.md` records how that was measured rather
+than asserted.
+
+
+3. WHAT YOU MAY DO
+------------------
+
+You may use SAIF AI. Install it, run it, use it to build things.
+
+You may read the source. It is published so that what the app does is not a
+secret, so that it can be reviewed, and so that the people who distribute it
+can show exactly what they are distributing.
+
+
+4. WHAT YOU MAY NOT DO
+----------------------
+
+You may not redistribute SAIF AI, or a modified version of it, without
+written permission from SAIF AI.
+
+You may not sell it, publish it to an app store under your own name, or
+offer it as a service to other people.
+
+You may not present it as your own work. The copyright notice in each source
+file must be left where it is.
+
+You may not remove or hide the third-party notices in
+`THIRD_PARTY_NOTICES.md`. Those components do not belong to SAIF AI, and
+their terms travel with them.
+
+The name SAIF AI, and the SAIF AI marks and iconography, are not licensed by
+this document.
+
+
+5. THIRD-PARTY COMPONENTS
+-------------------------
+
+SAIF AI is built on work published by other people under open licences.
+Those components keep their own licences, which are listed, with the
+dependency that pulls each one in, in `THIRD_PARTY_NOTICES.md`. That file
+also states which of them are copyleft and what, if anything, that requires
+of anyone distributing the application.
+
+Nothing in this document overrides the licence of a third-party component.
+
+
+6. NO WARRANTY
+--------------
+
+SAIF AI is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and non-infringement.
+
+SAIF AI is not liable for any claim, damages or other liability arising out
+of the use of the software, whether in contract, tort or otherwise.
+
+Special note, because this app can act on a device: SAIF AI can run shell
+commands, edit files and control the screen when you ask it to. It does what
+you ask. Check what you ask it to do.
+
+
+7. QUESTIONS
+------------
+
+Permission to redistribute, and any other question about this licence, goes
+to the maintainer of this repository.
